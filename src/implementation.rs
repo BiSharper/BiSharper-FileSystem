@@ -3,11 +3,11 @@ use std::sync::{Arc, RwLock};
 use crate::filesystem::{GFS, GfsSnapshot, GfsEntryMeta};
 use crate::GfsResult;
 use crate::io::{GfsFile, ReadableFile, WritableFile};
-use crate::path::GfsPath;
+use crate::path::{GfsPath, OwnedGfsPath};
 
 pub type ReadableGameFile = ReadableFile<GameFileMeta>;
-pub type WritableGameFile = WritableFile<GameFileMeta>;
-pub type GamePath = GfsPath<GameFileMeta>;
+pub type WritableGameFile = WritableFile<GameFileMeta, GameFileServer>;
+pub type GamePath = OwnedGfsPath<GameFileMeta, GameFileServer>;
 pub type GameFile = GfsFile<GameFileMeta>;
 
 
@@ -22,38 +22,38 @@ struct GameFileServer {
     root: GamePath
 }
 
-impl GFS<GameFileMeta> for GameFileServer {
-    fn rename_entry(&self, path: &GamePath, new_path: &GamePath) {
+impl GfsSnapshot<GameFileMeta> for GameFileServer {
+    fn root(&self) -> &OwnedGfsPath<GameFileMeta, Self> {
         todo!()
     }
 
-    fn insert_entry(&self, path: &GamePath, metadata: GameFileMeta, data: Arc<Vec<u8>>) -> GfsResult<&GameFile> {
+    fn normalize_path(&self, path: String) -> String {
         todo!()
     }
 
-    fn drop_entry(&self, path: &GfsPath<GameFileMeta>) -> GfsResult<GameFile> {
+    fn read_meta(&self, path: &GfsPath) -> Option<GameFileMeta> {
+        todo!()
+    }
+
+    fn read_data(&self, path: &GfsPath) -> Option<Arc<Vec<u8>>> {
+        todo!()
+    }
+
+    fn read_dir(&self, path: &str) -> Box<[OwnedGfsPath<GameFileMeta, Self>]> {
         todo!()
     }
 }
 
-impl GfsSnapshot<GameFileMeta> for GameFileServer {
-    fn normalize_path(&self, path: &str) -> &str {
+impl GFS<GameFileMeta> for GameFileServer {
+    fn rename_entry(&self, path: &GfsPath, new_path: &GfsPath) -> GfsResult<()> {
         todo!()
     }
 
-    fn read_meta(&self, path: &GamePath) -> Option<GameFileMeta> {
+    fn drop_entry(&self, path: &GfsPath) -> GfsResult<GfsFile<GameFileMeta>> {
         todo!()
     }
 
-    fn read_data(&self, path: &GamePath) -> Option<Arc<Vec<u8>>> {
-        todo!()
-    }
-
-    fn root(&self) -> &GamePath {
-        todo!()
-    }
-
-    fn read_dir(&self, path: &str) -> Box<[GamePath]> {
+    fn insert_entry(&self, path: &GfsPath, metadata: GameFileMeta, data: Arc<Vec<u8>>) -> GfsResult<&GfsFile<GameFileMeta>> {
         todo!()
     }
 }

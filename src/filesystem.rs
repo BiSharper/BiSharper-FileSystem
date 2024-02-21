@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use crate::GfsResult;
 use crate::io::{GfsFile, WritableFile, ReadableFile};
-use crate::path::GfsPath;
+use crate::path::{GfsPath, OwnedGfsPath, PathLike};
 
 pub const GFS_SEPARATOR: char = '/';
 
@@ -9,44 +9,46 @@ pub trait GfsEntryMeta : Copy + Clone + Default {
 
 }
 
-pub trait GfsSnapshot<T: GfsEntryMeta> {
-    fn create_path(&self, path: &str) -> GfsPath<T> { self.root().join(self.normalize_path(path)) }
+pub trait GfsSnapshot<T: GfsEntryMeta> : Sized {
+    fn root(&self) -> &OwnedGfsPath<T, Self>;
 
-    fn normalize_path(&self, path: &str) -> &str;
+    fn create_path(&self, path: &GfsPath) -> OwnedGfsPath<T, Self> { self.root().join(&self.normalize_path(path.to_string())) }
 
-    fn read_root(&self) -> Box<[GfsPath<T>]> { self.read_dir(self.root().as_str()) }
+    fn normalize_path(&self, path: String) -> String;
 
-    fn read_entry(&self, path: &GfsPath<T>) -> Option<GfsFile<T>> {
+    fn read_root(&self) -> Box<[OwnedGfsPath<T, Self>]> { self.read_dir(self.root().as_str()) }
+
+    fn read_meta(&self, path: &GfsPath) -> Option<T>;
+
+    fn read_data(&self, path: &GfsPath) -> Option<Arc<Vec<u8>>>;
+
+    fn read_dir(&self, path: &str) -> Box<[OwnedGfsPath<T, Self>]>;
+
+    fn read_entry(&self, path: &GfsPath) -> Option<GfsFile<T>> {
         Some(GfsFile::create(self.read_meta(path)?, self.read_data(path)?))
     }
 
-    fn entry_reader(&self, path: &GfsPath<T>) -> Option<ReadableFile<T>> {
+    fn entry_reader(&self, path: &GfsPath) -> Option<ReadableFile<T>> {
         Some(ReadableFile::from(self.read_entry(path)?))
     }
-
-    fn read_meta(&self, path: &GfsPath<T>) -> Option<T>;
-
-    fn read_data(&self, path: &GfsPath<T>) -> Option<Arc<Vec<u8>>>;
-
-    fn root(&self) -> &GfsPath<T>;
-
-    fn read_dir(&self, path: &str) -> Box<[GfsPath<T>]>;
 }
 
 pub trait GFS<T: GfsEntryMeta> : GfsSnapshot<T> {
 
-    fn rename_entry(&self, path: &GfsPath<T>, new_path: &GfsPath<T>);
+    fn rename_entry(&self, path: &GfsPath, new_path: &GfsPath) -> GfsResult<()>;
 
-    fn remove_entry(&self, path: &GfsPath<T>) -> GfsResult<()> { self.drop_entry(path)?; Ok(()) }
+    fn drop_entry(&self, path: &GfsPath) -> GfsResult<GfsFile<T>>;
 
-    fn entry_writer(&self, path: &GfsPath<T>) -> WritableFile<T> {
+    fn remove_entry(&self, path: &GfsPath) -> GfsResult<()> { self.drop_entry(path)?; Ok(()) }
+
+    fn entry_writer(&self, path: &GfsPath) -> WritableFile<T, Self> {
+        let owned_path = self.create_path(path);
         if let Some(entry) = self.read_entry(path) {
-            return WritableFile::create(path, entry.metadata, entry.contents.to_vec())
+            return WritableFile::from_owned(&owned_path, entry.metadata, entry.contents.to_vec())
         }
-        WritableFile::create(path, Default::default(), vec![])
+        WritableFile::from_owned(&owned_path, Default::default(), vec![])
     }
 
-    fn insert_entry(&self, path: &GfsPath<T>, metadata: T, data: Arc<Vec<u8>>) -> GfsResult<&GfsFile<T>>;
+    fn insert_entry(&self, path: &GfsPath, metadata: T, data: Arc<Vec<u8>>) -> GfsResult<&GfsFile<T>>;
 
-    fn drop_entry(&self, path: &GfsPath<T>) -> GfsResult<GfsFile<T>>;
 }

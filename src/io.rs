@@ -1,8 +1,8 @@
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 use std::{cmp, mem};
 use std::sync::Arc;
-use crate::{GfsEntryMeta};
-use crate::path::GfsPath;
+use crate::{GFS, GfsEntryMeta, GfsSnapshot};
+use crate::path::{GfsPath, OwnedGfsPath};
 
 pub struct ReadableFile<T: GfsEntryMeta> {
     metadata:  T,
@@ -10,10 +10,10 @@ pub struct ReadableFile<T: GfsEntryMeta> {
     content:   Arc<Vec<u8>>,
 }
 
-pub struct WritableFile<T: GfsEntryMeta> {
-    metadata:        T,
+pub struct WritableFile<M: GfsEntryMeta, F: GFS<M>> {
+    metadata:        M,
     cursor:          Cursor<Vec<u8>>,
-    destination:     GfsPath<T>
+    destination:     OwnedGfsPath<M, F>
 }
 
 pub struct GfsFile<T: GfsEntryMeta> {
@@ -28,6 +28,7 @@ impl<T: GfsEntryMeta> From<GfsFile<T>> for ReadableFile<T> {
             position: 0,
             content: value.contents,
         }
+
     }
 }
 
@@ -43,8 +44,8 @@ impl<T: GfsEntryMeta> ReadableFile<T> {
     pub fn len(&self) -> usize { self.content.len() }
 }
 
-impl<T: GfsEntryMeta> WritableFile<T> {
-    pub fn create(path: &GfsPath<T>, metadata: T, contents: Vec<u8>) -> Self {
+impl<M: GfsEntryMeta, F: GFS<M>> WritableFile<M, F> {
+    pub fn from_owned(path: &OwnedGfsPath<M, F>, metadata: M, contents: Vec<u8>) -> Self {
         WritableFile {
             metadata,
             cursor: Cursor::new(contents),
@@ -52,26 +53,34 @@ impl<T: GfsEntryMeta> WritableFile<T> {
         }
     }
 
-    pub fn metadata(&self) -> &T { &self.metadata }
+    pub fn create (path: &GfsPath, filesystem: &F, metadata: M, contents: Vec<u8>) -> Self {
+        WritableFile {
+            metadata,
+            cursor: Cursor::new(contents),
+            destination: filesystem.create_path(&path),
+        }
+    }
 
-    pub fn modify_metadata(&mut self) -> &mut T { &mut self.metadata }
+    pub fn metadata(&self) -> &M { &self.metadata }
+
+    pub fn modify_metadata(&mut self) -> &mut M { &mut self.metadata }
 }
 
-impl<T: GfsEntryMeta> Write for WritableFile<T> {
+impl<M: GfsEntryMeta, F: GFS<M>> Write for WritableFile<M, F> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> { self.cursor.write(buf) }
 
     fn flush(&mut self) -> std::io::Result<()> { self.cursor.flush() }
 }
 
-impl<T: GfsEntryMeta> Read for WritableFile<T> {
+impl<M: GfsEntryMeta, F: GFS<M>> Read for WritableFile<M, F> {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> { self.cursor.read(buf) }
 }
 
-impl<T: GfsEntryMeta> Seek for WritableFile<T> {
+impl<M: GfsEntryMeta, F: GFS<M>> Seek for WritableFile<M, F> {
     fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> { self.cursor.seek(pos) }
 }
 
-impl<T: GfsEntryMeta> Drop for WritableFile<T> {
+impl<M: GfsEntryMeta, F: GFS<M>> Drop for WritableFile<M, F> {
     fn drop(&mut self) {
         let mut content = vec![];
         mem::swap(&mut content, self.cursor.get_mut());
@@ -102,7 +111,7 @@ impl<T: GfsEntryMeta> Seek for ReadableFile<T> {
         match pos {
             SeekFrom::Start(offset) => self.position = offset as usize,
             SeekFrom::Current(offset) => self.position = self.position + offset as usize,
-            SeekFrom::End(offset) => self.position = (self.content.len() + offset as usize),
+            SeekFrom::End(offset) => self.position = self.content.len() + offset as usize,
         }
         Ok(self.position as u64)
     }
