@@ -1,7 +1,7 @@
 use std::io;
 use thiserror::Error;
 
-pub(crate) type GfsResult<T> = Result<T, GfsError>;
+pub type GfsResult<T> = Result<T, GfsError>;
 
 #[derive(Error, Debug)]
 pub enum GfsError {
@@ -9,6 +9,6 @@ pub enum GfsError {
     IoError(#[from] io::Error),
     #[error("The specified entry was not found")]
     EntryNotFound,
-    #[error("Filesystem Error Occurred")]
-    Other(),
+    #[error("Filesystem Error Occurred: {0}")]
+    Other(String),
 }
