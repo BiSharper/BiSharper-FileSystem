@@ -25,7 +25,7 @@ pub trait PathLike: Clone{
 
     fn join(&self, path: &GfsPath) -> Self;
 
-    fn to_owned_path<'a, M: GfsEntryMeta, F: GfsSnapshot<M>>(self, filesystem: &'a F) -> OwnedGfsPath<'a, M, F> {
+    fn to_owned_path<M: GfsEntryMeta, F: GfsSnapshot<M>>(self, filesystem: &F) -> OwnedGfsPath<M, F> {
         OwnedGfsPath::create(self, filesystem)
     }
 

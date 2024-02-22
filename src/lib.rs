@@ -1,5 +1,7 @@
 #![feature(lazy_cell)]
 
+extern crate core;
+
 pub mod error; pub use error::*;
 pub mod io;
 pub mod path;

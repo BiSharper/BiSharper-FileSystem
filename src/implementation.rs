@@ -2,22 +2,20 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use crate::filesystem::{GFS, GfsSnapshot};
 use crate::{GFS_SEPARATOR, GfsError, GfsResult, NoEntryMeta};
-use crate::io::{GfsFile, ReadableFile};
+use crate::io::{GfsFile, ReadableFile, WritableFile};
 use crate::path::{GfsPath, OwnedGfsPath, PathLike};
 
 pub type GameFileMeta = NoEntryMeta;
-pub type ReadableGameFile = ReadableFile<GameFileMeta>;
+
 pub type GameFile = GfsFile<GameFileMeta>;
-pub type GamePath<'a> = OwnedGfsPath<'a, GameFileMeta, GameFileServer>;
+pub type GamePath<'a> = OwnedGfsPath<'a, GameFileMeta, GameFileSystem>;
 
-
-
-pub struct GameFileServer {
+pub struct GameFileSystem {
     entries: Arc<RwLock<HashMap<GfsPath, GameFile>>>,
     root: GfsPath
 }
 
-impl GfsSnapshot<GameFileMeta> for GameFileServer {
+impl GfsSnapshot<GameFileMeta> for GameFileSystem {
     fn root(&self) -> &GfsPath { &self.root }
     fn read_meta(&self, path: &GfsPath) -> Option<GameFileMeta> {
         let handle = self.entries.read().unwrap();
@@ -52,7 +50,7 @@ impl GfsSnapshot<GameFileMeta> for GameFileServer {
     }
 }
 
-impl GFS<GameFileMeta> for GameFileServer {
+impl GFS<GameFileMeta> for GameFileSystem {
     fn new(root: &GfsPath) -> Self {
         Self {
             entries: Arc::new(RwLock::new(Default::default())),

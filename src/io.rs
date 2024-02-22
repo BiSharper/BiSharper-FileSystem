@@ -7,7 +7,7 @@ use crate::path::{GfsPath, OwnedGfsPath};
 pub struct ReadableFile<T: GfsEntryMeta> {
     metadata:  T,
     position:  usize,
-    content:   Arc<Vec<u8>>,
+    content:   Arc<[u8]>,
 }
 
 pub struct WritableFile<'a, M: GfsEntryMeta, F: GFS<M>> {
@@ -22,12 +22,12 @@ pub struct GfsFile<T: GfsEntryMeta> {
     pub(crate) contents: Arc<Vec<u8>>,
 }
 
-impl<T: GfsEntryMeta> From<GfsFile<T>> for ReadableFile<T> {
+impl<'a, T: GfsEntryMeta> From<GfsFile<T>> for ReadableFile<T> {
     fn from(value: GfsFile<T>) -> Self {
         Self {
             metadata: value.metadata,
             position: 0,
-            content: value.contents,
+            content: Arc::from(value.contents.as_slice())
         }
 
     }
@@ -97,7 +97,7 @@ impl<T: GfsEntryMeta> Read for ReadableFile<T> {
             buf[0] = self.content[self.position];
         } else {
             buf[..amt].copy_from_slice(
-                &self.content.as_slice()[self.position..self.position + amt],
+                &self.content[self.position..self.position + amt],
             );
         }
         self.position += amt;
