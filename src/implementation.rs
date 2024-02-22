@@ -6,7 +6,6 @@ use crate::io::{GfsFile};
 use crate::path::{GfsPath, OwnedGfsPath, PathLike};
 
 pub type GameFileMeta = NoEntryMeta;
-
 pub type GameFile = GfsFile<GameFileMeta>;
 pub type GamePath<'a> = OwnedGfsPath<'a, GameFileMeta, GameFileSystem>;
 
@@ -16,11 +15,16 @@ pub struct GameFileSystem {
 }
 
 impl GfsSnapshot<GameFileMeta> for GameFileSystem {
-    fn normalize_path(path: &GfsPath) -> GfsPath {
+    fn normalize_path(_path: &GfsPath) -> GfsPath {
         todo!()
     }
 
+    fn read_entry(&self, path: &GfsPath) -> GfsResult<GameFile> {
+        self.entries.read().unwrap().get(path).cloned().ok_or(GfsError::EntryNotFound)
+    }
+
     fn root(&self) -> &GfsPath { &self.root }
+
 
     fn read_meta(&self, path: &GfsPath) -> GfsResult<GameFileMeta> {
         let handle = self.entries.read().unwrap();
@@ -28,15 +32,10 @@ impl GfsSnapshot<GameFileMeta> for GameFileSystem {
         return handle.get(path).map(|file| file.metadata).ok_or(GfsError::EntryNotFound)
     }
 
-
     fn read_data(&self, path: &GfsPath) -> GfsResult<Arc<[u8]>> {
         let handle = self.entries.read().unwrap();
 
         return handle.get(path).map(|file| file.contents.clone()).ok_or(GfsError::EntryNotFound)
-    }
-
-    fn read_entry(&self, path: &GfsPath) -> GfsResult<GameFile> {
-        self.entries.read().unwrap().get(path).cloned().ok_or(GfsError::EntryNotFound)
     }
 
     fn read_dir(&self, path: &GfsPath, recursive: bool) -> GfsResult<Box<[GamePath]>> {
