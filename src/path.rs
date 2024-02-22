@@ -135,11 +135,11 @@ impl<M: GfsEntryMeta, F: GfsSnapshot<M>> PathLike for OwnedGfsPath<'_, M, F> {
 
 impl<'a, M: GfsEntryMeta, F: GFS<M>> OwnedGfsPath<'a, M, F> {
 
-    pub fn fs_new(&self, metadata: M, contents: Arc<Vec<u8>>) -> GfsResult<OwnedGfsPath<'a, M, F>> {
+    pub fn fs_new(&self, metadata: M, contents: Box<[u8]>) -> GfsResult<OwnedGfsPath<'a, M, F>> {
         self.fs.insert_entry(&self.path, metadata, contents)
     }
 
-    pub fn fs_writer(&self) -> WritableFile<M, F> { self.fs.entry_writer(&self.path) }
+    pub fn fs_writer(&self) -> GfsResult<WritableFile<M, F>> { self.fs.entry_writer(&self.path) }
 
     pub fn fs_drop_entry(&self) -> GfsResult<GfsFile<M>> { self.fs.drop_entry(&self.path) }
 
@@ -151,9 +151,9 @@ impl<'a, M: GfsEntryMeta, F: GFS<M>> OwnedGfsPath<'a, M, F> {
 }
 
 impl<M: GfsEntryMeta, F: GfsSnapshot<M>> OwnedGfsPath<'_, M, F> {
-    pub fn fs_meta(&self) -> Option<M> { self.fs.read_meta(&self.path) }
+    pub fn fs_meta(&self) -> GfsResult<M> { self.fs.read_meta(&self.path) }
 
-    pub fn fs_data(&self) -> Option<Arc<Vec<u8>>> { self.fs.read_data(&self.path) }
+    pub fn fs_data(&self) -> GfsResult<Arc<[u8]>> { self.fs.read_data(&self.path) }
 
-    pub fn fs_reader(&self) -> Option<ReadableFile<M>> { self.fs.entry_reader(&self.path) }
+    pub fn fs_reader(&self) -> GfsResult<ReadableFile<M>> { self.fs.entry_reader(&self.path) }
 }

@@ -1,5 +1,5 @@
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
-use std::{cmp, mem};
+use std::{cmp};
 use std::sync::Arc;
 use crate::{GFS, GfsEntryMeta};
 use crate::path::{GfsPath, OwnedGfsPath};
@@ -19,7 +19,11 @@ pub struct WritableFile<'a, M: GfsEntryMeta, F: GFS<M>> {
 #[derive(Clone)]
 pub struct GfsFile<T: GfsEntryMeta> {
     pub(crate) metadata: T,
-    pub(crate) contents: Arc<Vec<u8>>,
+    pub(crate) contents: Arc<[u8]>,
+}
+
+impl<T: GfsEntryMeta> GfsFile<T> {
+    pub fn metadata(&self) -> &T { &self.metadata }
 }
 
 impl<'a, T: GfsEntryMeta> From<GfsFile<T>> for ReadableFile<T> {
@@ -27,14 +31,14 @@ impl<'a, T: GfsEntryMeta> From<GfsFile<T>> for ReadableFile<T> {
         Self {
             metadata: value.metadata,
             position: 0,
-            content: Arc::from(value.contents.as_slice())
+            content: Arc::from(value.contents)
         }
 
     }
 }
 
 impl<T: GfsEntryMeta> GfsFile<T> {
-    pub fn create(metadata: T, contents: Arc<Vec<u8>>) -> Self {
+    pub fn create(metadata: T, contents: Arc<[u8]>) -> Self {
         GfsFile { metadata, contents}
     }
 }
@@ -83,9 +87,7 @@ impl<M: GfsEntryMeta, F: GFS<M>> Seek for WritableFile<'_, M, F> {
 
 impl<M: GfsEntryMeta, F: GFS<M>> Drop for WritableFile<'_, M, F> {
     fn drop(&mut self) {
-        let mut content = vec![];
-        mem::swap(&mut content, self.cursor.get_mut());
-        self.destination.fs_new(self.metadata, Arc::new(content)).unwrap();
+        self.destination.fs_new(self.metadata, self.cursor.clone().into_inner().into_boxed_slice()).unwrap();
     }
 }
 

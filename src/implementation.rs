@@ -22,27 +22,28 @@ impl GfsSnapshot<GameFileMeta> for GameFileSystem {
 
     fn root(&self) -> &GfsPath { &self.root }
 
-    fn read_meta(&self, path: &GfsPath) -> Option<GameFileMeta> {
+    fn read_meta(&self, path: &GfsPath) -> GfsResult<GameFileMeta> {
         let handle = self.entries.read().unwrap();
 
-        return handle.get(path).map(|file| file.metadata)
+        return handle.get(path).map(|file| file.metadata).ok_or(GfsError::EntryNotFound)
     }
 
-    fn read_data(&self, path: &GfsPath) -> Option<Arc<Vec<u8>>> {
+
+    fn read_data(&self, path: &GfsPath) -> GfsResult<Arc<[u8]>> {
         let handle = self.entries.read().unwrap();
 
-        return handle.get(path).map(|file| file.contents.clone())
+        return handle.get(path).map(|file| file.contents.clone()).ok_or(GfsError::EntryNotFound)
     }
 
-    fn read_entry(&self, path: &GfsPath) -> Option<GameFile> {
-            self.entries.read().unwrap().get(path).cloned()
+    fn read_entry(&self, path: &GfsPath) -> GfsResult<GameFile> {
+        self.entries.read().unwrap().get(path).cloned().ok_or(GfsError::EntryNotFound)
     }
 
-    fn read_dir(&self, path: &GfsPath, recursive: bool) -> Box<[GamePath]> {
+    fn read_dir(&self, path: &GfsPath, recursive: bool) -> GfsResult<Box<[GamePath]>> {
         let handle = self.entries.read().unwrap();
         let path = self.create_path(path).to_directory_path();
         let prefix_len = path.as_str().len();
-        Box::from_iter(
+        Ok(Box::from_iter(
             handle
                 .iter()
                 .filter_map(| (candidate, _) | {
@@ -51,7 +52,7 @@ impl GfsSnapshot<GameFileMeta> for GameFileSystem {
                         Some(self.create_path(candidate))
                     } else { None }
                 })
-        )
+        ))
     }
 }
 
@@ -67,10 +68,16 @@ impl GFS<GameFileMeta> for GameFileSystem {
         self.entries.write().unwrap().remove(path).ok_or(GfsError::EntryNotFound)
     }
 
-    fn insert_entry(&self, path: &GfsPath, metadata: GameFileMeta, data: Arc<Vec<u8>>) -> GfsResult<GamePath> {
+    fn insert_entry(&self, path: &GfsPath, metadata: GameFileMeta, data: Box<[u8]>) -> GfsResult<GamePath> {
         let mut handle = self.entries.write().unwrap();
-        if let None = handle.insert(path.clone(), GameFile::create(metadata, data)) {
-            Err(GfsError::EntryNotFound)
-        } else { Ok(self.create_path(path)) }
+        handle.insert(path.clone(), GameFile::create(metadata, Arc::from(data)));
+        Ok(self.create_path(path))
+    }
+
+    fn replace_entry(&self, path: &GfsPath, entry: GfsFile<GameFileMeta>) -> GfsResult<GamePath >{
+        let path = self.create_path(path);
+        let mut handle = self.entries.write().unwrap();
+        handle.insert(path.as_path().clone(), entry);
+        Ok(path)
     }
 }
