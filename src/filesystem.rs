@@ -19,8 +19,10 @@ impl GfsEntryMeta for NoEntryMeta {
 
 pub trait GfsSnapshot<T: GfsEntryMeta> : Sized {
     fn create_path(&self, path: &GfsPath) -> OwnedGfsPath<T, Self> {
-        OwnedGfsPath::create(self.root().join(path), &self)
+        OwnedGfsPath::create(self.root().join(&Self::normalize_path(path)), &self)
     }
+
+    fn normalize_path(path: &GfsPath) -> GfsPath;
 
     fn read_root(&self, recursive: bool) -> Box<[OwnedGfsPath<T, Self>]> { self.read_dir(&self.root(), recursive) }
 

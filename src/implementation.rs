@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use crate::filesystem::{GFS, GfsSnapshot};
 use crate::{GFS_SEPARATOR, GfsError, GfsResult, NoEntryMeta};
-use crate::io::{GfsFile, ReadableFile, WritableFile};
+use crate::io::{GfsFile};
 use crate::path::{GfsPath, OwnedGfsPath, PathLike};
 
 pub type GameFileMeta = NoEntryMeta;
@@ -16,7 +16,12 @@ pub struct GameFileSystem {
 }
 
 impl GfsSnapshot<GameFileMeta> for GameFileSystem {
+    fn normalize_path(path: &GfsPath) -> GfsPath {
+        todo!()
+    }
+
     fn root(&self) -> &GfsPath { &self.root }
+
     fn read_meta(&self, path: &GfsPath) -> Option<GameFileMeta> {
         let handle = self.entries.read().unwrap();
 

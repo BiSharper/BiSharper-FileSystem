@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+bisharper-common = { path = "../bisharper-common"}
 thiserror = "1.0.57"
-log = "0.4.20"
+bisharper-filesystem_macros = { path = "macros"}
