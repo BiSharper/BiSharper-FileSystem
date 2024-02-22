@@ -1,4 +1,3 @@
-use std::marker;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use crate::filesystem::{GFS, GfsEntryMeta};
@@ -40,7 +39,7 @@ pub trait PathLike: Clone{
 
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hash, Eq, PartialEq)]
 pub struct GfsPath {
     path: Arc<str>,
 }
@@ -99,7 +98,7 @@ impl<M: GfsEntryMeta, F: GfsSnapshot<M>> Clone for OwnedGfsPath<'_, M, F> {
     fn clone(&self) -> Self {
         Self {
             path: self.path.clone(),
-            fs: self.fs.clone(),
+            fs: self.fs,
             _meta_data_marker: PhantomData
         }
     }
@@ -136,7 +135,7 @@ impl<M: GfsEntryMeta, F: GfsSnapshot<M>> PathLike for OwnedGfsPath<'_, M, F> {
 
 impl<'a, M: GfsEntryMeta, F: GFS<M>> OwnedGfsPath<'a, M, F> {
 
-    pub fn fs_new(&self, metadata: M, contents: Arc<Vec<u8>>) -> GfsResult<&GfsFile<M>> {
+    pub fn fs_new(&self, metadata: M, contents: Arc<Vec<u8>>) -> GfsResult<OwnedGfsPath<'a, M, F>> {
         self.fs.insert_entry(&self.path, metadata, contents)
     }
 
@@ -146,7 +145,9 @@ impl<'a, M: GfsEntryMeta, F: GFS<M>> OwnedGfsPath<'a, M, F> {
 
     pub fn fs_remove_entry(&self) -> GfsResult<()> { self.fs.remove_entry(&self.path) }
 
-    pub fn fs_rename_entry(&self, new_path: &GfsPath) -> GfsResult<()>{ self.fs.rename_entry(&self.path, new_path) }
+    pub fn fs_rename_entry(&self, new_path: &GfsPath) -> GfsResult<OwnedGfsPath<'a, M, F>>{
+        self.fs.rename_entry(&self.path, new_path)
+    }
 }
 
 impl<M: GfsEntryMeta, F: GfsSnapshot<M>> OwnedGfsPath<'_, M, F> {

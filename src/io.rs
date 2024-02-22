@@ -1,7 +1,7 @@
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 use std::{cmp, mem};
 use std::sync::Arc;
-use crate::{GFS, GfsEntryMeta, GfsSnapshot};
+use crate::{GFS, GfsEntryMeta};
 use crate::path::{GfsPath, OwnedGfsPath};
 
 pub struct ReadableFile<T: GfsEntryMeta> {
@@ -16,6 +16,7 @@ pub struct WritableFile<'a, M: GfsEntryMeta, F: GFS<M>> {
     destination:     OwnedGfsPath<'a, M, F>
 }
 
+#[derive(Clone)]
 pub struct GfsFile<T: GfsEntryMeta> {
     pub(crate) metadata: T,
     pub(crate) contents: Arc<Vec<u8>>,
