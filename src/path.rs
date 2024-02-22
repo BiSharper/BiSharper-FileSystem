@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use crate::filesystem::{GFS, GfsEntryMeta};
@@ -156,4 +157,26 @@ impl<M: GfsEntryMeta, F: GfsSnapshot<M>> OwnedGfsPath<'_, M, F> {
     pub fn fs_data(&self) -> GfsResult<Arc<[u8]>> { self.fs.read_data(&self.path) }
 
     pub fn fs_reader(&self) -> GfsResult<ReadableFile<M>> { self.fs.entry_reader(&self.path) }
+}
+
+pub fn default_directory_enumerator<'a, T, M: GfsEntryMeta, F : GfsSnapshot<M>>(
+    path: &GfsPath,
+    read_handle: &'a Arc<HashMap<GfsPath, T>>,
+    filesystem: &'a F,
+    recursive: bool
+) -> GfsResult<Box<[OwnedGfsPath<'a, M, F>]>> {
+    let path = filesystem.create_path(path).to_directory_path();
+    let path_str = path.as_str();
+    let prefix_len = path_str.len();
+
+    let mut child_paths = Vec::new();
+    for (candidate, _) in read_handle.iter() {
+        let candidate_str = candidate.as_str();
+        if candidate_str.starts_with(path.as_str()) &&
+            (!recursive || !candidate_str[prefix_len..].contains(crate::GFS_SEPARATOR)) {
+            child_paths.push(filesystem.create_path(candidate));
+        }
+    }
+
+    Ok(Box::from(child_paths))
 }

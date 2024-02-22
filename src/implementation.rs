@@ -42,16 +42,17 @@ impl GfsSnapshot<GameFileMeta> for GameFileSystem {
         let handle = self.entries.read().unwrap();
         let path = self.create_path(path).to_directory_path();
         let prefix_len = path.as_str().len();
-        Ok(Box::from_iter(
-            handle
-                .iter()
-                .filter_map(| (candidate, _) | {
-                    if path.as_path().is_child(candidate) && (!recursive || path.as_str()[prefix_len..].find(GFS_SEPARATOR).is_none()
-                        ) {
-                        Some(self.create_path(candidate))
-                    } else { None }
-                })
-        ))
+        let path_str = path.as_str();
+        let mut child_paths = Vec::new();
+        for (candidate, _) in handle.iter() {
+            let candidate_str = candidate.as_str();
+            if candidate_str.starts_with(path_str) &&
+                (!recursive || !candidate_str[prefix_len..].contains(GFS_SEPARATOR)) {
+                child_paths.push(self.create_path(candidate));
+            }
+        }
+
+        Ok(Box::from(child_paths))
     }
 }
 
