@@ -2,12 +2,11 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use crate::filesystem::{GFS, GfsSnapshot, GfsEntryMeta};
 use crate::GfsResult;
-use crate::io::{GfsFile, ReadableFile, WritableFile};
+use crate::io::{GfsFile, ReadableFile};
 use crate::path::{GfsPath, OwnedGfsPath};
 
 pub type ReadableGameFile = ReadableFile<GameFileMeta>;
-pub type WritableGameFile = WritableFile<GameFileMeta, GameFileServer>;
-pub type GamePath = OwnedGfsPath<GameFileMeta, GameFileServer>;
+
 pub type GameFile = GfsFile<GameFileMeta>;
 
 
@@ -17,19 +16,14 @@ pub struct GameFileMeta {
 }
 
 
-struct GameFileServer {
-    entries: RwLock<HashMap<String, GameFile>>,
-    root: GamePath
+pub struct GameFileServer {
+    entries: Arc<RwLock<HashMap<GfsPath, GameFile>>>,
+    root: GfsPath
 }
 
 impl GfsSnapshot<GameFileMeta> for GameFileServer {
-    fn root(&self) -> &OwnedGfsPath<GameFileMeta, Self> {
-        todo!()
-    }
 
-    fn normalize_path(&self, path: String) -> String {
-        todo!()
-    }
+    fn root(&self) -> &GfsPath { &self.root }
 
     fn read_meta(&self, path: &GfsPath) -> Option<GameFileMeta> {
         todo!()
@@ -39,12 +33,17 @@ impl GfsSnapshot<GameFileMeta> for GameFileServer {
         todo!()
     }
 
-    fn read_dir(&self, path: &str) -> Box<[OwnedGfsPath<GameFileMeta, Self>]> {
+    fn read_dir(&self, path: &GfsPath) -> Box<[OwnedGfsPath<GameFileMeta, Self>]> {
         todo!()
     }
 }
 
 impl GFS<GameFileMeta> for GameFileServer {
+    fn new(root: &GfsPath) -> Arc<Self> {
+        todo!()
+    }
+
+
     fn rename_entry(&self, path: &GfsPath, new_path: &GfsPath) -> GfsResult<()> {
         todo!()
     }

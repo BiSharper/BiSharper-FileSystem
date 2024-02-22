@@ -9,10 +9,10 @@ pub const GFS_SEPARATOR: char = '/';
 pub const ALT_SEPARATOR: char = '\\';
 const SEPARATORS: [char; 2] = [ALT_SEPARATOR, GFS_SEPARATOR];
 
-pub struct OwnedGfsPath<M: GfsEntryMeta, F: GfsSnapshot<M>> {
+pub struct OwnedGfsPath<'a, M: GfsEntryMeta, F: GfsSnapshot<M>> {
     path: GfsPath,
-    fs:   Arc<F>,
-    _meta_data_marker: marker::PhantomData<M>,
+    fs:   &'a F,
+    _meta_data_marker: PhantomData<M>,
 }
 
 pub trait PathLike: Clone{
@@ -24,9 +24,20 @@ pub trait PathLike: Clone{
 
     fn to_directory_path(self) -> Self;
 
-    fn join(&self, path: &str) -> Self;
+    fn join(&self, path: &GfsPath) -> Self;
+
+    fn to_owned_path<'a, M: GfsEntryMeta, F: GfsSnapshot<M>>(self, filesystem: &'a F) -> OwnedGfsPath<'a, M, F> {
+        OwnedGfsPath::create(self, filesystem)
+    }
+
+    fn as_owned_path<'a, M: GfsEntryMeta, F: GfsSnapshot<M>>(&self, filesystem: &'a F) -> OwnedGfsPath<'a, M, F> {
+        OwnedGfsPath::create(self.as_path().clone(), filesystem)
+    }
 
     fn as_path(&self) -> &GfsPath;
+
+    fn to_path(self) -> GfsPath;
+
 }
 
 #[derive(Clone)]
@@ -42,7 +53,19 @@ impl<T: AsRef<str>> From<T> for GfsPath {
     }
 }
 
-impl<M: GfsEntryMeta, F: GFS<M>> From<OwnedGfsPath<M, F>> for GfsPath {
+impl<'a, M: GfsEntryMeta, F: GfsSnapshot<M>> OwnedGfsPath<'a, M, F> {
+    pub fn create(path: impl PathLike, snapshot: &'a F) -> Self {
+        Self {
+            path: path.to_path(),
+            fs: snapshot,
+            _meta_data_marker: Default::default(),
+        }
+    }
+
+    pub fn filesystem(&self) -> &'a F { self.fs }
+}
+
+impl<M: GfsEntryMeta, F: GFS<M>> From<OwnedGfsPath<'_, M, F>> for GfsPath {
     fn from(value: OwnedGfsPath<M, F>) -> Self { value.path }
 }
 
@@ -63,16 +86,16 @@ impl PathLike for GfsPath {
         return GfsPath::from(format!("{}{}", self.as_str(), GFS_SEPARATOR))
     }
 
-    fn join(&self, path: &str) -> Self {
-        GfsPath::from(format!("{}{}{}", self.as_str(), GFS_SEPARATOR, path.trim_start_matches(SEPARATORS)))
+    fn join(&self, path: &GfsPath) -> Self {
+        GfsPath::from(format!("{}{}{}", self.as_str(), GFS_SEPARATOR, path.path.trim_start_matches(SEPARATORS)))
     }
 
-
-
     fn as_path(&self) -> &GfsPath { self }
+
+    fn to_path(self) -> GfsPath { self }
 }
 
-impl<M: GfsEntryMeta, F: GfsSnapshot<M>> Clone for OwnedGfsPath<M, F> {
+impl<M: GfsEntryMeta, F: GfsSnapshot<M>> Clone for OwnedGfsPath<'_, M, F> {
     fn clone(&self) -> Self {
         Self {
             path: self.path.clone(),
@@ -82,7 +105,7 @@ impl<M: GfsEntryMeta, F: GfsSnapshot<M>> Clone for OwnedGfsPath<M, F> {
     }
 }
 
-impl<M: GfsEntryMeta, F: GfsSnapshot<M>> PathLike for OwnedGfsPath<M, F> {
+impl<M: GfsEntryMeta, F: GfsSnapshot<M>> PathLike for OwnedGfsPath<'_, M, F> {
 
     fn as_str(&self) -> &str { self.path.as_str() }
 
@@ -98,19 +121,20 @@ impl<M: GfsEntryMeta, F: GfsSnapshot<M>> PathLike for OwnedGfsPath<M, F> {
         }
     }
 
-    fn join(&self, path: &str) -> Self {
+    fn join(&self, path: &GfsPath) -> Self {
         Self {
             path: self.path.join(path),
-            fs: self.fs.clone(),
+            fs: self.fs,
             _meta_data_marker: PhantomData
         }
     }
 
-
     fn as_path(&self) -> &GfsPath { &self.path }
+
+    fn to_path(self) -> GfsPath { self.path }
 }
 
-impl<M: GfsEntryMeta, F: GFS<M>> OwnedGfsPath<M, F> {
+impl<'a, M: GfsEntryMeta, F: GFS<M>> OwnedGfsPath<'a, M, F> {
 
     pub fn fs_new(&self, metadata: M, contents: Arc<Vec<u8>>) -> GfsResult<&GfsFile<M>> {
         self.fs.insert_entry(&self.path, metadata, contents)
@@ -125,7 +149,7 @@ impl<M: GfsEntryMeta, F: GFS<M>> OwnedGfsPath<M, F> {
     pub fn fs_rename_entry(&self, new_path: &GfsPath) -> GfsResult<()>{ self.fs.rename_entry(&self.path, new_path) }
 }
 
-impl<M: GfsEntryMeta, F: GfsSnapshot<M>> OwnedGfsPath<M, F> {
+impl<M: GfsEntryMeta, F: GfsSnapshot<M>> OwnedGfsPath<'_, M, F> {
     pub fn fs_meta(&self) -> Option<M> { self.fs.read_meta(&self.path) }
 
     pub fn fs_data(&self) -> Option<Arc<Vec<u8>>> { self.fs.read_data(&self.path) }

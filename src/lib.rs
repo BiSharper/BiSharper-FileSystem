@@ -1,3 +1,5 @@
+#![feature(lazy_cell)]
+
 pub mod error; pub use error::*;
 pub mod io;
 pub mod path;
