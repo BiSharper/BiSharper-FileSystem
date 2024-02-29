@@ -1,9 +1,10 @@
 [package]
-name = "bisharper-filesystem"
+name = "bisharper-gfs"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 bisharper-common = { path = "../bisharper-common"}
+rfsa = { path = "../../external/rfsa"}
+
 thiserror = "1.0.57"
-bisharper-filesystem_macros = { path = "macros"}
