@@ -1,3 +1,8 @@
+
+
+mod interop;
+#[allow(unused_imports)] pub use interop::*;
+
 use std::ops::{Deref, DerefMut};
 use rfsa::{ReadableVFile, ReadableVMetadata, VDirectory, VFile, WritableVFile, WritableVMetadata};
 use rfsa::impls::memory::MemoryFileSystem;
@@ -15,9 +20,7 @@ pub struct GameMeta {
 
 }
 
-pub struct GameFileSystem {
-    file_system: MemoryFileSystem<GameMeta>
-}
+pub struct GameFileSystem { file_system: MemoryFileSystem<GameMeta> }
 
 impl Deref for GameFileSystem {
     type Target = MemoryFileSystem<GameMeta>;
@@ -28,5 +31,7 @@ impl Deref for GameFileSystem {
 impl DerefMut for GameFileSystem {
     fn deref_mut(&mut self) -> &mut Self::Target  { &mut self.file_system }
 }
+
+
 
 

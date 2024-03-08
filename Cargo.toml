@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bisharper-common = { path = "../bisharper-common"}
+bisharper-common = { path = "../bisharper-common" }
+bisharper-bank = { path = "../../structures/bisharper-bank", optional = true }
 rfsa = { path = "../../external/rfsa"}
-
 thiserror = "1.0.57"
+
+[features]
+bank-interop = ["bisharper-bank"]
