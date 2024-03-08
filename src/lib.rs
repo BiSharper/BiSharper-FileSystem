@@ -1,65 +1,32 @@
-use std::collections::HashMap;
-use rfsa::{GFS_SEPARATOR, PathLike, ReadableVFile, ReadableVMetadata, VDirectory, VFile, VFileContainer, VFileSystem, VPath, VPathIterator, WritableVFile, WritableVMetadata};
-use rfsa::error::{VFSError, VFSResult};
+use std::ops::{Deref, DerefMut};
+use rfsa::{ReadableVFile, ReadableVMetadata, VDirectory, VFile, WritableVFile, WritableVMetadata};
+use rfsa::impls::memory::MemoryFileSystem;
 use rfsa::macros::VMeta;
+
+pub type GameFile = VFile<GameMeta>;
+pub type ReadableGameFile = ReadableVFile<GameMeta>;
+pub type WritableGameFile<'a> = WritableVFile<'a, GameMeta, GameFileSystem>;
+pub type ReadableGameMetadata = ReadableVMetadata<GameMeta>;
+pub type WritableGameMetadata<'a> = WritableVMetadata<'a, GameMeta, GameFileSystem>;
+pub type GameDirectory<'a> = VDirectory<'a, GameMeta, GameFileSystem>;
 
 #[derive(VMeta, Copy, Clone, Default, Eq, PartialEq)]
 pub struct GameMeta {
 
 }
 
-pub type GameFile = VFile<GameMeta>;
-pub type ReadableGameFile<'a> = ReadableVFile<'a, GameMeta>;
-pub type WritableGameFile<'a> = WritableVFile<'a, GameMeta>;
-pub type ReadableGameMetadata<'a> = ReadableVMetadata<'a, GameMeta>;
-pub type WritableGameMetadata<'a> = WritableVMetadata<'a, GameMeta>;
-pub type GameDirectory<'a> = VDirectory<'a, GameMeta, GameFilesystem>;
-
-pub struct GameFilesystem {
-    entries: HashMap<VPath, GameFile>
+pub struct GameFileSystem {
+    file_system: MemoryFileSystem<GameMeta>
 }
 
-impl GameFilesystem {
-    pub fn create() -> Self { Self { entries: HashMap::new(), } }
+impl Deref for GameFileSystem {
+    type Target = MemoryFileSystem<GameMeta>;
+
+    fn deref(&self) -> &Self::Target { &self.file_system }
 }
 
-impl VFileContainer<GameMeta, Self> for GameFilesystem {
-    fn file_remove(&mut self, path: &VPath) -> VFSResult<GameFile> {
-        self.entries.remove(path).ok_or(VFSError::EntryNotFound)
-    }
-
-    fn file_exists(&self, path: &VPath) -> VFSResult<bool> {
-        Ok(self.entries.contains_key(path))
-    }
-
-    fn file_insert(&mut self, path: &VPath, file: GameFile) -> VFSResult<Option<GameFile>> {
-        Ok(self.entries.insert(path.clone(), file))
-    }
-
-    fn file_mut(&mut self, path: &VPath) -> VFSResult<&mut GameFile> {
-        self.entries.get_mut(path).ok_or(VFSError::EntryNotFound)
-    }
-
-    fn file_get(&self, path: &VPath) -> VFSResult<&GameFile> {
-        self.entries.get(path).ok_or(VFSError::EntryNotFound)
-    }
-
-    fn dir_exists(&self, path: &VPath) -> VFSResult<bool> {
-        Ok(self.entries.keys().find(|p| {
-            p.starts_with(path.as_directory_string().as_str())
-        }) != None)
-    }
+impl DerefMut for GameFileSystem {
+    fn deref_mut(&mut self) -> &mut Self::Target  { &mut self.file_system }
 }
 
-impl VFileSystem<GameMeta> for GameFilesystem {
-    fn paths(&self) -> VFSResult<VPathIterator> {
-        Ok(Box::new(self.entries.keys().cloned().collect::<Vec<VPath>>().into_iter()))
-    }
 
-    fn path_iter(&self, path_prefix: String, recursive: bool) -> VFSResult<VPathIterator> {
-        let prefix_len = path_prefix.len();
-        Ok(Box::new(self.entries.keys().filter( |candidate| {
-            candidate.starts_with(path_prefix.as_str()) && (!recursive || !candidate[prefix_len..].contains(GFS_SEPARATOR))
-        }).cloned().collect::<Vec<VPath>>().into_iter()))
-    }
-}
